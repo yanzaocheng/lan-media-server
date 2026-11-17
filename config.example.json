@@ -1,0 +1,8 @@
+{
+  "root": "E:\\",
+  "port": 8090,
+  "password": "",
+  "exclude": ["$RECYCLE.BIN", "System Volume Information", "media-server"],
+  "rescanMinutes": 10,
+  "allowDelete": true
+}

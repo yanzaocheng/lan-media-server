@@ -1,0 +1,721 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#111">
+<title>影音</title>
+<style>
+  :root { --bg:#111; --card:#1c1c1c; --fg:#eee; --muted:#999; --accent:#e50914; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif; }
+  header { position:sticky; top:0; z-index:10; background:rgba(17,17,17,.95); backdrop-filter:blur(8px); padding:10px 12px 0; padding-top:max(10px,env(safe-area-inset-top)); }
+  .bar { display:flex; gap:8px; align-items:center; }
+  .logo { font-weight:700; font-size:18px; color:var(--accent); cursor:pointer; white-space:nowrap; }
+  #q { flex:1; min-width:0; padding:8px 12px; border-radius:18px; border:1px solid #333; background:#222; color:var(--fg); font-size:16px; outline:none; }
+  .tabs { display:flex; gap:4px; margin-top:8px; overflow-x:auto; }
+  .tab { padding:8px 12px; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent; white-space:nowrap; }
+  .tab.on { color:var(--fg); border-color:var(--accent); }
+  .tools { margin-left:auto; display:flex; gap:6px; align-items:center; }
+  select, .btn { background:#222; color:var(--fg); border:1px solid #333; border-radius:6px; padding:5px 8px; font-size:13px; cursor:pointer; }
+  main { padding:12px; padding-bottom:max(24px,env(safe-area-inset-bottom)); }
+  .crumb { color:var(--muted); margin:0 0 10px; word-break:break-all; }
+  .crumb a { color:var(--fg); text-decoration:none; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(170px,1fr)); gap:12px; }
+  @media (max-width:480px) { .grid { grid-template-columns:1fr 1fr; gap:8px; } }
+  .card { background:var(--card); border-radius:8px; overflow:hidden; cursor:pointer; text-decoration:none; color:inherit; display:block; }
+  .card:active { opacity:.7; }
+  .th { position:relative; aspect-ratio:16/9; background:#000 center/contain no-repeat; display:flex; align-items:center; justify-content:center; color:#555; font-size:32px; }
+  .th img { width:100%; height:100%; object-fit:contain; display:block; }
+  .badge { position:absolute; right:4px; bottom:4px; background:rgba(0,0,0,.75); color:#fff; font-size:11px; padding:1px 5px; border-radius:3px; }
+  .cnt { position:absolute; left:4px; top:4px; background:rgba(0,0,0,.75); color:#fff; font-size:11px; padding:1px 6px; border-radius:3px; }
+  .prog { position:absolute; left:0; bottom:0; height:3px; background:var(--accent); }
+  .meta { padding:6px 8px 8px; }
+  .name { overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; word-break:break-all; font-size:13px; }
+  .sub { color:var(--muted); font-size:11px; margin-top:2px; }
+  .folder .th { background:#262626; }
+  .folder .th::after { content:"📁"; position:absolute; right:6px; top:4px; font-size:16px; }
+  .empty { color:var(--muted); text-align:center; padding:40px 0; }
+  .meta { position:relative; }
+  .acts { position:absolute; right:2px; bottom:2px; display:flex; gap:2px; }
+  .act { padding:5px 6px; border-radius:5px; color:#777; font-size:15px; line-height:1; cursor:pointer; filter:grayscale(1); opacity:.9; }
+  .act:hover, .act:active { filter:none; opacity:1; background:#333; }
+  .act.del:hover, .act.del:active { background:#b3261e; }
+  .sub { padding-right:52px; }
+  .delbtn { margin-left:10px; color:#e57373; border-color:#5a2a2a; }
+  .hidebtn { margin-left:10px; }
+  .toast { position:fixed; left:50%; bottom:30px; transform:translateX(-50%); background:#333; color:#fff; padding:10px 18px; border-radius:20px; z-index:50; display:flex; gap:14px; align-items:center; white-space:nowrap; }
+  .toast a { color:#ff6b6b; cursor:pointer; font-weight:600; }
+  .hlist { display:flex; flex-direction:column; gap:8px; }
+  .hrow { display:flex; gap:10px; align-items:center; background:var(--card); border-radius:8px; padding:8px; }
+  .hrow img { width:96px; aspect-ratio:16/9; object-fit:contain; background:#000; border-radius:4px; flex:none; }
+  .hrow .hinfo { flex:1; min-width:0; word-break:break-all; }
+  .hrow .btn { flex:none; }
+  /* 播放页 */
+  .player { max-width:1100px; margin:0 auto; }
+  video { width:100%; max-height:75vh; background:#000; display:block; border-radius:6px; }
+  .ptitle { font-size:15px; margin:10px 0 4px; word-break:break-all; }
+  .pinfo { color:var(--muted); font-size:12px; }
+  .pbtns { display:flex; gap:8px; margin:10px 0 16px; flex-wrap:wrap; }
+  .pbtns .btn { padding:7px 12px; }
+  .btn.on { background:var(--accent); border-color:var(--accent); }
+  h3 { font-size:14px; color:var(--muted); font-weight:normal; margin:16px 0 8px; }
+  .cur { outline:2px solid var(--accent); }
+  .subtag { position:absolute; left:4px; bottom:4px; background:rgba(229,9,20,.85); color:#fff; font-size:11px; padding:0 4px; border-radius:3px; }
+  /* 视频 + 自绘字幕层 */
+  .vwrap { position:relative; background:#000; border-radius:6px; overflow:hidden; }
+  .vwrap video { border-radius:0; }
+  .vwrap:fullscreen { display:flex; align-items:center; justify-content:center; border-radius:0; }
+  .vwrap:fullscreen video { width:100%; height:100%; max-height:none; }
+  .vwrap:-webkit-full-screen { display:flex; align-items:center; justify-content:center; width:100%; height:100%; }
+  .vwrap:-webkit-full-screen video { width:100%; height:100%; max-height:none; }
+  .subov { position:absolute; pointer-events:none; overflow:hidden; }
+  .subov .grp { position:absolute; display:flex; flex-direction:column; }
+  .subov .cue { white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.2; }
+  video::cue { background:rgba(0,0,0,.45); color:#fff; font-family:"PingFang SC","Microsoft YaHei",sans-serif; }
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <span class="logo" onclick="go('#/')">▶ 影音</span>
+    <input id="q" type="search" placeholder="搜索文件名…" autocomplete="off">
+  </div>
+  <div class="tabs" id="tabs">
+    <span class="tab" data-v="folders">文件夹</span>
+    <span class="tab" data-v="recent">最新</span>
+    <span class="tab" data-v="continue">继续观看</span>
+    <span class="tools">
+      <select id="sort">
+        <option value="mtime">按时间</option>
+        <option value="name">按名称</option>
+        <option value="size">按大小</option>
+        <option value="dur">按时长</option>
+      </select>
+      <span class="btn" id="hiddenbtn" title="管理从列表里移除的视频" style="display:none"></span>
+      <span class="btn" id="rescan" title="重新扫描硬盘，同步新下载或删掉的视频">⟳ 刷新</span>
+    </span>
+  </div>
+</header>
+<main id="main"></main>
+
+<script src="/hls.min.js"></script>
+<script>
+let FILES = [], byP = new Map();
+let hls = null;
+const $main = document.getElementById('main');
+const $q = document.getElementById('q');
+const $sort = document.getElementById('sort');
+$sort.value = localStorage.getItem('sort') || 'mtime';
+
+const enc = encodeURIComponent;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+const fmtDur = s => { if (!s) return ''; s = Math.round(s); const h = s / 3600 | 0, m = (s % 3600) / 60 | 0, x = s % 60; return (h ? h + ':' + String(m).padStart(2,'0') : m) + ':' + String(x).padStart(2,'0'); };
+const fmtSize = b => b > 1e9 ? (b / 1e9).toFixed(2) + ' GB' : (b / 1e6).toFixed(0) + ' MB';
+const fmtDate = t => { const d = new Date(t); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
+const getPos = p => +localStorage.getItem('pos:' + p) || 0;
+const go = h => { location.hash = h; };
+
+let ALLOW_DELETE = false;
+// 服务器上的网页更新了就刷新：切换页面只改 #hash，不会重新加载，旧页面会一直用旧代码
+let PAGE_VER = null;
+function checkVersion(ver) {
+  if (!ver) return;
+  if (PAGE_VER === null) { PAGE_VER = ver; return; }
+  if (ver === PAGE_VER) return;
+  const v = document.querySelector('video');
+  if (v && !v.paused) toast('网页已更新', 0, { label: '刷新', fn: () => location.reload() });
+  else location.reload();
+}
+const onListPage = () => !/^#\/(play|hidden)/.test(location.hash);
+// 重新渲染列表但保持滚动位置
+function rerender() { const y = window.scrollY; route(); window.scrollTo(0, y); }
+
+async function pollConfig() {
+  const c = await (await fetch('/api/config')).json();
+  checkVersion(c.ver);
+  const hb = document.getElementById('hiddenbtn');
+  hb.textContent = `已移除 ${c.hidden}`;
+  hb.style.display = c.hidden ? '' : 'none';
+  let changed = false;
+  if (ALLOW_DELETE !== !!c.allowDelete) { ALLOW_DELETE = !!c.allowDelete; changed = true; }
+  if (changed && onListPage()) rerender();
+}
+
+async function load() {
+  pollConfig().catch(() => {});
+  FILES = await (await fetch('/api/files')).json();
+  byP = new Map(FILES.map(f => [f.p, f]));
+}
+
+function sorted(list) {
+  const k = $sort.value, a = list.slice();
+  if (k === 'name') a.sort((x, y) => x.name.localeCompare(y.name, 'zh', { numeric: true }));
+  else if (k === 'size') a.sort((x, y) => y.size - x.size);
+  else if (k === 'dur') a.sort((x, y) => (y.dur || 0) - (x.dur || 0));
+  else a.sort((x, y) => y.mtime - x.mtime);
+  return a;
+}
+
+// 删除按钮：del = { type: 'dir'|'file', p }
+// 卡片右下角按钮：移除（不在列表显示，文件保留）+ 删除（移到回收站，仅文件夹视图）
+const acts = (del, hide) => {
+  let h = '';
+  if (hide) h += `<span class="act hide" data-type="${hide.type}" data-p="${esc(hide.p)}" title="${hide.type === 'dir' ? '从列表移除整个文件夹' : '从列表移除'}（文件保留）">🚫</span>`;
+  if (del && ALLOW_DELETE) h += `<span class="act del" data-type="${del.type}" data-p="${esc(del.p)}" title="${del.type === 'dir' ? '删除整个文件夹' : '删除这个视频'}">🗑</span>`;
+  return h ? `<span class="acts">${h}</span>` : '';
+};
+
+function card(f, cur, del) {
+  const pos = getPos(f.p);
+  const pct = f.dur && pos ? Math.min(100, pos / f.dur * 100) : 0;
+  return `<a class="card${cur ? ' cur' : ''}" href="#/play/${enc(f.p)}">
+    <div class="th">${f.noVideo ? '♪' : `<img loading="lazy" src="/thumb?p=${enc(f.p)}&v=${f.mtime|0}" onerror="this.remove()">`}
+      ${f.dur ? `<span class="badge">${fmtDur(f.dur)}</span>` : ''}
+      ${f.sub ? '<span class="subtag">字幕</span>' : ''}
+      ${pct ? `<span class="prog" style="width:${pct}%"></span>` : ''}</div>
+    <div class="meta"><div class="name">${esc(f.name)}</div><div class="sub">${fmtSize(f.size)} · ${fmtDate(f.mtime)}</div>${acts(del, { type: 'file', p: f.p })}</div></a>`;
+}
+
+function folderCard(d, size) {
+  const cover = d.all.reduce((a, b) => (b.mtime > a.mtime ? b : a)); // 封面用最新的视频
+  return `<a class="card folder" href="#/d/${enc(d.p)}">
+    <div class="th">${cover && !cover.noVideo ? `<img loading="lazy" src="/thumb?p=${enc(cover.p)}&v=${cover.mtime|0}" onerror="this.remove()">` : ''}
+      <span class="cnt">${d.count} 个</span></div>
+    <div class="meta"><div class="name">${esc(d.name)}</div><div class="sub">${size ? fmtSize(size) + ' · ' : ''}${fmtDate(d.latest)}</div>${acts({ type: 'dir', p: d.p }, { type: 'dir', p: d.p })}</div></a>`;
+}
+
+// 由文件列表构建目录树
+function tree() {
+  const root = { name: '', p: '', dirs: new Map(), files: [], count: 0, latest: 0, all: [] };
+  for (const f of FILES) {
+    let node = root;
+    const add = n => { n.count++; n.all.push(f); if (f.mtime > n.latest) { n.latest = f.mtime; } };
+    add(node);
+    if (f.dir) {
+      let acc = '';
+      for (const part of f.dir.split('/')) {
+        acc = acc ? acc + '/' + part : part;
+        if (!node.dirs.has(part)) node.dirs.set(part, { name: part, p: acc, dirs: new Map(), files: [], count: 0, latest: 0, all: [] });
+        node = node.dirs.get(part);
+        add(node);
+      }
+    }
+    node.files.push(f);
+  }
+  return root;
+}
+
+function setTab(v) {
+  for (const t of document.querySelectorAll('.tab')) t.classList.toggle('on', t.dataset.v === v);
+}
+
+function grid(html) { return html ? `<div class="grid">${html}</div>` : '<div class="empty">没有视频</div>'; }
+
+function renderFolders(dirPath) {
+  setTab('folders');
+  const root = tree();
+  let node = root;
+  if (dirPath) for (const part of dirPath.split('/')) { node = node.dirs.get(part); if (!node) return go('#/'); }
+  let crumb = `<a href="#/">全部</a>`, acc = '';
+  if (dirPath) for (const part of dirPath.split('/')) { acc = acc ? acc + '/' + part : part; crumb += ` / <a href="#/d/${enc(acc)}">${esc(part)}</a>`; }
+  // 只含一个视频的子文件夹直接显示视频本身
+  const singles = [], folders = [];
+  const delOf = new Map(); // 视频卡片的删除对象：单视频文件夹删文件夹，其余删文件
+  for (const d of node.dirs.values()) {
+    if (d.count === 1) { singles.push(d.all[0]); delOf.set(d.all[0].p, { type: 'dir', p: d.p }); }
+    else folders.push(d);
+  }
+  // 文件夹和视频混在一起排序：文件夹的时间 = 里面最新视频的时间，大小/时长 = 合计
+  const items = sorted([
+    ...folders.map(d => ({ d, name: d.name, mtime: d.latest, size: d.all.reduce((s, f) => s + f.size, 0), dur: d.all.reduce((s, f) => s + (f.dur || 0), 0) })),
+    ...node.files.concat(singles),
+  ]);
+  const delHere = !dirPath ? '' : `<span class="btn hidebtn hide-here" data-type="dir" data-p="${esc(dirPath)}">🚫 从列表移除此文件夹</span>` +
+    (ALLOW_DELETE ? `<span class="btn delbtn del-here" data-type="dir" data-p="${esc(dirPath)}">🗑 删除此文件夹</span>` : '');
+  $main.innerHTML = `<div class="crumb">${crumb} <span>(${node.count})</span>${delHere}</div>` +
+    grid(items.map(it => it.d ? folderCard(it.d, it.size) : card(it, false, delOf.get(it.p) || { type: 'file', p: it.p })).join(''));
+}
+
+function renderList(kind) {
+  setTab(kind);
+  let list;
+  if (kind === 'continue') {
+    list = FILES.filter(f => getPos(f.p) > 0)
+      .sort((a, b) => (+localStorage.getItem('at:' + b.p) || 0) - (+localStorage.getItem('at:' + a.p) || 0));
+  } else list = sorted(FILES);
+  $main.innerHTML = grid(list.map(f => card(f)).join(''));
+}
+
+function renderSearch(q) {
+  setTab('');
+  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+  const list = sorted(FILES.filter(f => { const s = f.p.toLowerCase(); return words.every(w => s.includes(w)); }));
+  $main.innerHTML = `<div class="crumb">搜索 “${esc(q)}”：${list.length} 个结果</div>` + grid(list.map(f => card(f)).join(''));
+}
+
+// ---------- 播放 ----------
+function canDirect(info) {
+  const v = document.createElement('video');
+  const ext = info.name.split('.').pop().toLowerCase();
+  if (!['mp4', 'm4v', 'mov', 'webm', 'mkv'].includes(ext)) return false;
+  if (ext === 'mkv' && !v.canPlayType('video/webm')) return false;
+  const vc = info.v && info.v.codec, ac = info.a && info.a.codec;
+  if (vc) {
+    if (vc === 'h264') { if (!/^yuvj?420p$/.test(info.v.pix_fmt || '')) return false; }
+    else if (vc === 'hevc') { if (!v.canPlayType('video/mp4; codecs="hvc1.1.6.L93.B0"') && !v.canPlayType('video/mp4; codecs="hev1.1.6.L93.B0"')) return false; }
+    else if (vc === 'vp9') { if (!v.canPlayType('video/webm; codecs="vp9"')) return false; }
+    else if (vc === 'vp8') { if (!v.canPlayType('video/webm; codecs="vp8"')) return false; }
+    else if (vc === 'av1') { if (!v.canPlayType('video/mp4; codecs="av01.0.05M.08"')) return false; }
+    else return false;
+  }
+  if (ac && !['aac', 'mp3', 'opus', 'vorbis', 'flac', 'alac'].includes(ac)) return false;
+  return true;
+}
+
+function stopPlayer() {
+  if (hls) { hls.destroy(); hls = null; }
+  const v = document.querySelector('video');
+  if (v) { v.pause(); v.removeAttribute('src'); v.load(); }
+}
+
+async function renderPlay(p) {
+  setTab('');
+  const f = byP.get(p);
+  if (!f) return go('#/');
+  const siblings = sorted(FILES.filter(x => x.dir === f.dir));
+  const idx = siblings.findIndex(x => x.p === p);
+  const prev = siblings[idx - 1], next = siblings[idx + 1];
+  $main.innerHTML = `<div class="player">
+    <div class="vwrap" id="vwrap"><video id="v" controls playsinline preload="metadata" controlslist="nofullscreen"></video><div class="subov" id="subov"></div></div>
+    <div class="ptitle">${esc(f.name)}</div>
+    <div class="pinfo" id="pinfo">${fmtSize(f.size)} · ${fmtDate(f.mtime)}${f.dir ? ` · <a style="color:#aaa" href="#/d/${enc(f.dir)}">${esc(f.dir)}</a>` : ''}</div>
+    <div class="pbtns">
+      <span class="btn" id="fsbtn">⛶ 全屏</span>
+      ${prev ? `<a class="btn" href="#/play/${enc(prev.p)}">⏮ 上一个</a>` : ''}
+      ${next ? `<a class="btn" href="#/play/${enc(next.p)}">下一个 ⏭</a>` : ''}
+      <span class="btn" id="mode" title="播放不了时切换到转码">转码播放</span>
+      <span class="btn" id="restart">从头播放</span>
+      <label class="btn"><input type="checkbox" id="auto" ${localStorage.getItem('autonext') === '1' ? 'checked' : ''}> 自动下一个</label>
+      <select id="subsel" style="display:none" title="字幕"></select>
+      <select id="subsize" style="display:none" title="字幕大小">
+        <option value="s">字幕小</option><option value="m">字幕中</option><option value="l">字幕大</option><option value="xl">字幕特大</option>
+      </select>
+    </div>
+    ${siblings.length > 1 ? `<h3>同文件夹 (${siblings.length})</h3><div class="grid">${siblings.map(x => card(x, x.p === p)).join('')}</div>` : ''}
+  </div>`;
+  const video = document.getElementById('v');
+  const $mode = document.getElementById('mode');
+  document.getElementById('auto').onchange = e => localStorage.setItem('autonext', e.target.checked ? '1' : '0');
+  setupFullscreen(video);
+
+  const info = await (await fetch('/api/info?p=' + enc(p))).json();
+  if (location.hash !== '#/play/' + enc(p)) return;
+  const vi = info.v ? `${info.v.codec} ${info.v.width}×${info.v.height}` : '无视频轨';
+  document.getElementById('pinfo').insertAdjacentHTML('beforeend', ` · ${fmtDur(info.duration)} · ${vi}${info.a ? ' / ' + info.a.codec : ''}`);
+
+  setupSubs(video, p, info.subs || []);
+  let transcode = !canDirect(info);
+  let startAt = getPos(p);
+  if (startAt > info.duration - 10) startAt = 0;
+
+  function start(t) {
+    stopPlayer();
+    $mode.classList.toggle('on', transcode);
+    $mode.textContent = transcode ? '转码中（点此直连）' : '转码播放';
+    const seek = () => { if (t > 0) video.currentTime = t; };
+    if (!transcode) {
+      video.src = '/video?p=' + enc(p);
+      video.addEventListener('loadedmetadata', seek, { once: true });
+    } else {
+      const url = '/hls/index.m3u8?p=' + enc(p);
+      if (window.Hls && Hls.isSupported()) {
+        hls = new Hls({ startPosition: t > 0 ? t : -1, maxBufferLength: 30 });
+        hls.loadSource(url);
+        hls.attachMedia(video);
+      } else {
+        video.src = url;
+        video.addEventListener('loadedmetadata', seek, { once: true });
+      }
+    }
+    video.play().catch(() => {});
+  }
+
+  video.addEventListener('error', () => {
+    if (!transcode) { transcode = true; start(video.currentTime || startAt); }
+  });
+  $mode.onclick = () => { const t = video.currentTime; transcode = !transcode; start(t); };
+  document.getElementById('restart').onclick = () => { video.currentTime = 0; video.play().catch(() => {}); };
+
+  let lastSave = 0;
+  video.addEventListener('timeupdate', () => {
+    if (Date.now() - lastSave < 3000) return;
+    lastSave = Date.now();
+    const t = video.currentTime;
+    if (t > 5) { localStorage.setItem('pos:' + p, t.toFixed(1)); localStorage.setItem('at:' + p, Date.now()); }
+  });
+  video.addEventListener('ended', () => {
+    localStorage.removeItem('pos:' + p);
+    if (next && document.getElementById('auto').checked) go('#/play/' + enc(next.p));
+  });
+  start(startAt);
+  window.scrollTo(0, 0);
+}
+
+// 全屏：全屏的是“视频+字幕层”外层容器，字幕样式才能保留；iPhone 不支持元素全屏，只能用系统播放器
+const fsEl = () => document.fullscreenElement || document.webkitFullscreenElement;
+function setupFullscreen(video) {
+  const wrap = document.getElementById('vwrap');
+  const toggle = async () => {
+    if (fsEl()) return (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    try {
+      if (wrap.requestFullscreen) await wrap.requestFullscreen({ navigationUI: 'hide' });
+      else if (wrap.webkitRequestFullscreen) wrap.webkitRequestFullscreen();
+      else if (video.webkitEnterFullscreen) return video.webkitEnterFullscreen();
+      if (video.videoWidth > video.videoHeight && screen.orientation && screen.orientation.lock) await screen.orientation.lock('landscape').catch(() => {});
+    } catch {}
+  };
+  document.getElementById('fsbtn').onclick = toggle;
+  video.addEventListener('dblclick', e => { e.preventDefault(); toggle(); });
+}
+
+// 字幕：选中的 <track> 设为 hidden（只加载不显示），由下面的字幕层按 ASS 样式自己画；
+// 视频元素自己进入全屏（iPhone、安卓旋转自动全屏）时字幕层看不到，改用浏览器自带渲染（::cue 样式尽量还原）
+const SIZE_SCALE = { s: 0.8, m: 1, l: 1.25, xl: 1.5 };
+let subCleanup = null;
+function setupSubs(video, p, subs) {
+  const $sel = document.getElementById('subsel'), $size = document.getElementById('subsize');
+  const ov = document.getElementById('subov');
+  if (!subs.length) return;
+  for (const s of subs) {
+    const t = document.createElement('track');
+    t.kind = 'subtitles';
+    t.label = s.label;
+    t.srclang = /日文|原文/.test(s.label) ? 'ja' : /英文/.test(s.label) ? 'en' : 'zh';
+    t.src = `/sub?p=${enc(p)}&i=${s.i}`;
+    video.appendChild(t);
+  }
+  let styleEl = document.getElementById('substyle');
+  if (!styleEl) { styleEl = document.createElement('style'); styleEl.id = 'substyle'; document.head.appendChild(styleEl); }
+
+  $sel.innerHTML = '<option value="-1">关闭字幕</option>' + subs.map(s => `<option value="${s.i}">字幕：${esc(s.label)}</option>`).join('');
+  const pref = localStorage.getItem('subLabel');
+  let cur = pref === 'off' ? -1 : subs.findIndex(s => s.label === pref);
+  if (pref !== 'off' && cur < 0) cur = 0; // 服务端已把中文排在前面
+  let scale = SIZE_SCALE[localStorage.getItem('subSize')] ? localStorage.getItem('subSize') : 'm';
+  let st = null;      // 当前字幕的样式信息 {ass, resX, resY, classes}
+  let native = false; // 是否由浏览器自带渲染
+  let box = { w: 0, h: 0 };
+  const R = () => (st && st.ass ? { x: st.resX, y: st.resY } : { x: 1920, y: 1080 });
+
+  const fam = fn => `"${String(fn).replace(/["\\]/g, '')}","Microsoft YaHei","PingFang SC","Noto Sans CJK SC",sans-serif`;
+  const strokeOk = CSS.supports('paint-order', 'stroke fill');
+  const ringShadow = (w, color, unit) => {
+    const out = [];
+    for (let a = 0; a < 16; a++) {
+      const r = a * Math.PI / 8;
+      out.push(`${(Math.cos(r) * w).toFixed(4)}${unit} ${(Math.sin(r) * w).toFixed(4)}${unit} 0 ${color}`);
+    }
+    return out;
+  };
+  // ASS 的字号是“行高”（字体 ascent+descent），CSS 的是 em，按字体度量换算，和 libass 渲染大小一致
+  const factors = {};
+  const fontFactor = fn => {
+    if (factors[fn]) return factors[fn];
+    const c = document.createElement('canvas').getContext('2d');
+    c.font = `100px ${fam(fn)}`;
+    const m = c.measureText('国Ag');
+    const h = (m.fontBoundingBoxAscent || 0) + (m.fontBoundingBoxDescent || 0);
+    return (factors[fn] = h > 50 ? 100 / h : 0.76);
+  };
+  let nativeRatio = 20; // 画面高度 / 浏览器默认字号
+  function buildCss() {
+    const sc = SIZE_SCALE[scale];
+    const rules = [];
+    // 默认样式（SRT/VTT 或 ASS 里未包裹的文字）：白字黑边，字高约为画面高度 5.4%
+    rules.push(`.subov .cue{font-family:${fam('Microsoft YaHei')};font-size:calc(var(--k)*58px);color:#fff;` +
+      (strokeOk ? `-webkit-text-stroke:calc(var(--k)*5px) #000;paint-order:stroke fill;` : `text-shadow:${ringShadow(2.5, '#000', 'px').map(s => s.replace(/(-?[\d.]+)px/g, 'calc(var(--k)*$1px)')).join(',')};`) + '}');
+    rules.push(`video::cue{font-size:${(108 * sc).toFixed(0)}%}`);
+    if (st && st.ass) {
+      rules.push(`video::cue{background:transparent;color:#fff;text-shadow:${ringShadow(0.06, '#000', 'em').join(',')}}`);
+      rules.push('.subov .cue{font-size:0}'); // 行高只由各段自己的字号决定
+
+      for (const [k, c] of Object.entries(st.classes)) {
+        const deco = [c.u && 'underline', c.s && 'line-through'].filter(Boolean).join(' ') || 'none';
+        const common = `font-family:${fam(c.fn)};color:${c.c};font-weight:${c.b ? 700 : 400};font-style:${c.i ? 'italic' : 'normal'};text-decoration:${deco};`;
+        const fsz = c.fs * fontFactor(c.fn);
+        let ovs = common + `font-size:calc(var(--k)*${fsz.toFixed(2)}px);line-height:calc(var(--k)*${c.fs}px);`;
+        const shadows = [];
+        if (c.bs === 3) ovs += `background:${c.oc};-webkit-text-stroke:0;box-decoration-break:clone;-webkit-box-decoration-break:clone;padding:0 calc(var(--k)*${c.bord}px);`;
+        else if (c.bord > 0) {
+          if (strokeOk) ovs += `-webkit-text-stroke:calc(var(--k)*${c.bord * 2}px) ${c.oc};paint-order:stroke fill;`;
+          else shadows.push(...ringShadow(c.bord, c.oc, 'px').map(s => s.replace(/(-?[\d.]+)px/g, 'calc(var(--k)*$1px)')));
+        } else ovs += '-webkit-text-stroke:0;';
+        if (c.shad > 0) shadows.push(`calc(var(--k)*${c.shad}px) calc(var(--k)*${c.shad}px) 0 ${c.bs === 3 ? c.bc : c.bc}`);
+        ovs += `text-shadow:${shadows.length ? shadows.join(',') : 'none'};`;
+        rules.push(`.subov .${k}{${ovs}}`);
+        // 浏览器自带渲染：字号相对默认值（画面高度的 5%）
+        // 浏览器默认字号 = 视频元素短边的 5%（含黑边），换算成相对画面高度的大小
+        const pct = fsz / st.resY * nativeRatio * 100 * sc;
+        const em = fsz ? c.bord / fsz : 0;
+        const ns = [...(c.bord > 0 && c.bs !== 3 ? ringShadow(em, c.oc, 'em') : []), ...(c.shad > 0 ? [`${(c.shad / fsz).toFixed(3)}em ${(c.shad / fsz).toFixed(3)}em 0 ${c.bc}`] : [])];
+        rules.push(`video::cue(.${k}){${common}font-size:${pct.toFixed(1)}%;text-shadow:${ns.join(',') || 'none'};${c.bs === 3 ? `background:${c.oc};` : ''}}`);
+      }
+    }
+    styleEl.textContent = rules.join('\n');
+  }
+
+  // 字幕层覆盖在视频画面上（去掉黑边），--k = 画面高度 / PlayResY × 字幕大小
+  function layout() {
+    const W = video.clientWidth, H = video.clientHeight, vw = video.videoWidth, vh = video.videoHeight;
+    let cw = W, ch = H, ox = video.offsetLeft, oy = video.offsetTop;
+    if (vw && vh && W && H) {
+      const a = vw / vh;
+      if (W / H > a) { cw = H * a; ox += (W - cw) / 2; } else { ch = W / a; oy += (H - ch) / 2; }
+    }
+    Object.assign(ov.style, { left: ox + 'px', top: oy + 'px', width: cw + 'px', height: ch + 'px' });
+    box = { w: cw, h: ch };
+    ov.style.setProperty('--k', ch / R().y * SIZE_SCALE[scale]);
+    const nr = Math.min(W, H) ? ch / (0.05 * Math.min(W, H)) : 20;
+    if (Math.abs(nr - nativeRatio) > 0.01) { nativeRatio = nr; buildCss(); }
+    render();
+  }
+
+  function render() {
+    ov.textContent = '';
+    if (cur < 0 || native || !box.h) return;
+    const tr = video.textTracks[cur];
+    if (!tr || !tr.activeCues || !tr.activeCues.length) return;
+    const r = R(), kx = box.w / r.x, ky = box.h / r.y;
+    const groups = new Map();
+    for (const cue of [...tr.activeCues].sort((a, b) => a.startTime - b.startTime)) {
+      const id = (cue.id || '').split(' ');
+      const ass = st && st.ass && id.length >= 5;
+      const an = ass ? +id[1] : 2;
+      const ml = ass ? +id[2] : r.x * 0.05, mr = ass ? +id[3] : r.x * 0.05, mv = ass ? +id[4] : r.y * 0.05;
+      const h = (an - 1) % 3, v = an >= 7 ? 0 : an >= 4 ? 1 : 2;
+      const d = document.createElement('div');
+      d.className = 'cue';
+      d.style.textAlign = ['left', 'center', 'right'][h];
+      d.appendChild(cue.getCueAsHTML());
+      if (ass && id.length >= 7) { // \pos 绝对定位
+        Object.assign(d.style, { position: 'absolute', left: (+id[5] * kx) + 'px', top: (+id[6] * ky) + 'px',
+          transform: `translate(${-50 * h}%, ${-50 * v}%)`, whiteSpace: 'pre' });
+        ov.appendChild(d);
+        continue;
+      }
+      const key = [v, ml, mr, mv].join('|');
+      let g = groups.get(key);
+      if (!g) {
+        g = document.createElement('div');
+        g.className = 'grp';
+        Object.assign(g.style, { left: ml * kx + 'px', right: mr * kx + 'px' });
+        if (v === 0) g.style.top = mv * ky + 'px';
+        else if (v === 2) g.style.bottom = mv * ky + 'px';
+        else { g.style.top = '50%'; g.style.transform = 'translateY(-50%)'; }
+        groups.set(key, g);
+        ov.appendChild(g);
+      }
+      if (v === 2) g.prepend(d); else g.appendChild(d); // 底部字幕新的往上叠
+    }
+  }
+
+  function applyModes() {
+    const tracks = video.textTracks;
+    for (let i = 0; i < tracks.length; i++) {
+      tracks[i].mode = i === cur ? (native ? 'showing' : 'hidden') : 'disabled';
+      tracks[i].oncuechange = i === cur ? render : null;
+    }
+    render();
+  }
+
+  async function loadStyle() {
+    st = null;
+    buildCss();
+    layout();
+    if (cur < 0) return;
+    const want = cur;
+    try {
+      const j = await (await fetch(`/sub?p=${enc(p)}&i=${subs[want].i}&fmt=style`)).json();
+      if (want !== cur) return;
+      st = j;
+    } catch {}
+    buildCss();
+    layout();
+  }
+
+  $sel.value = cur;
+  $sel.onchange = () => {
+    cur = +$sel.value;
+    localStorage.setItem('subLabel', cur < 0 ? 'off' : subs[cur].label);
+    applyModes();
+    loadStyle();
+  };
+  $size.value = scale;
+  $size.onchange = () => {
+    scale = $size.value;
+    localStorage.setItem('subSize', scale);
+    buildCss();
+    layout();
+  };
+  $sel.style.display = $size.style.display = '';
+
+  const onFs = () => {
+    native = fsEl() === video; // 视频元素本身全屏
+    applyModes();
+    setTimeout(layout, 50);
+  };
+  document.addEventListener('fullscreenchange', onFs);
+  document.addEventListener('webkitfullscreenchange', onFs);
+  video.addEventListener('webkitbeginfullscreen', () => { native = true; applyModes(); });
+  video.addEventListener('webkitendfullscreen', () => { native = false; applyModes(); layout(); });
+  // 切换直连/转码后浏览器可能重置轨道状态，重新应用
+  video.addEventListener('loadedmetadata', () => { applyModes(); layout(); });
+  video.addEventListener('resize', layout);
+  const ro = new ResizeObserver(layout);
+  ro.observe(video);
+  window.addEventListener('resize', layout);
+  subCleanup = () => {
+    ro.disconnect();
+    window.removeEventListener('resize', layout);
+    document.removeEventListener('fullscreenchange', onFs);
+    document.removeEventListener('webkitfullscreenchange', onFs);
+    styleEl.textContent = '';
+  };
+  applyModes();
+  loadStyle();
+}
+
+// ---------- 路由 ----------
+async function route() {
+  stopPlayer();
+  if (subCleanup) { subCleanup(); subCleanup = null; }
+  if (PAGE_VER !== null) fetch('/api/config').then(r => r.json()).then(c => checkVersion(c.ver)).catch(() => {});
+  const h = location.hash || '#/';
+  let m;
+  if ((m = /^#\/play\/(.+)$/.exec(h))) return renderPlay(decodeURIComponent(m[1]));
+  if ((m = /^#\/d\/(.+)$/.exec(h))) return renderFolders(decodeURIComponent(m[1]));
+  if ((m = /^#\/search\/(.*)$/.exec(h))) { const q = decodeURIComponent(m[1]); $q.value = q; return q ? renderSearch(q) : go('#/'); }
+  if (h === '#/recent') return renderList('recent');
+  if (h === '#/continue') return renderList('continue');
+  if (h === '#/hidden') return renderHidden();
+  return renderFolders('');
+}
+
+document.getElementById('tabs').addEventListener('click', e => {
+  const t = e.target.closest('.tab'); if (!t) return;
+  $q.value = '';
+  go({ folders: '#/', recent: '#/recent', continue: '#/continue' }[t.dataset.v]);
+});
+let qTimer;
+$q.addEventListener('input', () => {
+  clearTimeout(qTimer);
+  qTimer = setTimeout(() => { const q = $q.value.trim(); history.replaceState(null, '', q ? '#/search/' + enc(q) : '#/'); route(); }, 250);
+});
+$sort.onchange = () => { localStorage.setItem('sort', $sort.value); if (!/^#\/play/.test(location.hash)) route(); };
+let rescanning = false;
+document.getElementById('rescan').onclick = async () => {
+  if (rescanning) return;
+  rescanning = true;
+  toast('正在扫描硬盘…');
+  try {
+    const before = new Set(FILES.map(f => f.p));
+    const r = await fetch('/api/rescan');
+    if (!r.ok) throw new Error(await r.text());
+    await load();
+    const after = new Set(FILES.map(f => f.p));
+    const added = [...after].filter(p => !before.has(p)).length, removed = [...before].filter(p => !after.has(p)).length;
+    toast(`已刷新：共 ${FILES.length} 个视频` + (added ? `，新增 ${added}` : '') + (removed ? `，减少 ${removed}` : '') + (added || removed ? '' : '，没有变化'), 3000);
+    if (onListPage()) rerender(); // 播放页不打断播放
+  } catch (e) {
+    toast('刷新失败：' + e.message, 4000);
+  } finally { rescanning = false; }
+};
+window.addEventListener('hashchange', route);
+
+// ---------- 移除 / 删除 ----------
+let toastTimer;
+function toast(text, ms, action) {
+  clearTimeout(toastTimer);
+  let t = document.querySelector('.toast');
+  if (!text) { if (t) t.remove(); return; }
+  if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+  t.textContent = text;
+  if (action) {
+    const a = document.createElement('a');
+    a.textContent = action.label;
+    a.onclick = () => { toast(); action.fn(); };
+    t.appendChild(a);
+  }
+  if (ms) toastTimer = setTimeout(() => toast(), ms);
+}
+const postJson = (url, body) => fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+async function setHidden(type, p, hide) {
+  const r = await postJson(hide ? '/api/hide' : '/api/unhide', { type, p });
+  if (!r.ok) return alert((hide ? '移除' : '恢复') + '失败：' + await r.text());
+  await load();
+  // 把当前所在文件夹移除了就回到上一级
+  const m = /^#\/d\/(.+)$/.exec(location.hash);
+  const curDir = m ? decodeURIComponent(m[1]) : '';
+  if (hide && type === 'dir' && curDir && (curDir === p || curDir.startsWith(p + '/'))) {
+    const parent = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+    go(parent ? '#/d/' + enc(parent) : '#/');
+  } else route();
+  if (hide) toast(type === 'dir' ? '已从列表移除该文件夹' : '已从列表移除', 5000, { label: '撤销', fn: () => setHidden(type, p, false) });
+}
+
+async function renderHidden() {
+  setTab('');
+  const list = await (await fetch('/api/hidden')).json();
+  if (location.hash !== '#/hidden') return;
+  list.sort((a, b) => b.at - a.at);
+  $main.innerHTML = `<div class="crumb"><a href="#/">全部</a> / 已从列表移除（${list.length}）：文件都还在硬盘上，点“恢复显示”放回列表</div>` +
+    (list.length ? `<div class="hlist">${list.map(h => `<div class="hrow">
+      ${h.cover ? `<img loading="lazy" src="/thumb?p=${enc(h.cover.p)}&v=${h.cover.mtime | 0}" onerror="this.style.visibility='hidden'">` : '<img style="visibility:hidden">'}
+      <div class="hinfo"><div>${h.type === 'dir' ? '📁 ' : ''}${esc(h.p)}</div>
+        <div class="sub" style="padding:0">${h.videos ? `${h.type === 'dir' ? h.videos + ' 个视频 · ' : ''}${fmtSize(h.size)}` : '已不存在'} · ${fmtDate(h.at)} 移除</div></div>
+      <span class="btn unhide" data-type="${h.type}" data-p="${esc(h.p)}">${h.videos ? '恢复显示' : '清除记录'}</span></div>`).join('')}</div>`
+      : '<div class="empty">没有移除的视频</div>');
+}
+document.getElementById('hiddenbtn').onclick = () => { $q.value = ''; go('#/hidden'); };
+async function doDelete(type, p) {
+  const r = await fetch(`/api/delinfo?type=${type}&p=${enc(p)}`);
+  if (!r.ok) return alert('不能删除：' + await r.text());
+  const i = await r.json();
+  const msg = type === 'dir'
+    ? `删除整个文件夹「${i.name}」？\n\n里面共 ${i.files} 个文件（其中视频 ${i.videos} 个），${fmtSize(i.size)}，字幕等其他文件也会一起删掉。\n会移到电脑的回收站，可以从回收站恢复。`
+    : `删除视频「${i.name}」？\n\n${fmtSize(i.size)}${i.extra.length ? `，连同 ${i.extra.length} 个同名的字幕/附属文件` : ''}。\n会移到电脑的回收站，可以从回收站恢复。`;
+  if (!confirm(msg)) return;
+  toast('正在删除…');
+  try {
+    const r2 = await postJson('/api/delete', { type, p });
+    await load();
+    if (!r2.ok) { toast(); return alert('删除失败：' + await r2.text()); }
+  } catch (e) { toast(); return alert('删除失败：' + e.message); }
+  toast('已移到回收站', 2000);
+  // 当前所在文件夹被删了就回到上一级
+  const m = /^#\/d\/(.+)$/.exec(location.hash);
+  const curDir = m ? decodeURIComponent(m[1]) : '';
+  if (type === 'dir' && curDir && (curDir === p || curDir.startsWith(p + '/'))) {
+    const parent = p.includes('/') ? p.slice(0, p.lastIndexOf('/')) : '';
+    go(parent ? '#/d/' + enc(parent) : '#/');
+  } else route();
+}
+$main.addEventListener('click', e => {
+  const b = e.target.closest('.del, .del-here, .hide, .hide-here, .unhide');
+  if (!b) return;
+  e.preventDefault();
+  e.stopPropagation();
+  if (b.matches('.hide, .hide-here')) setHidden(b.dataset.type, b.dataset.p, true);
+  else if (b.matches('.unhide')) setHidden(b.dataset.type, b.dataset.p, false);
+  else doDelete(b.dataset.type, b.dataset.p);
+});
+
+load().then(route);
+// 后台在生成时长/缩略图，定期刷新列表数据（不打断播放）
+setInterval(async () => { if (!/^#\/play/.test(location.hash)) { await load(); } }, 60000);
+</script>
+</body>
+</html>

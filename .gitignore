@@ -1,0 +1,8 @@
+# 缓存：缩略图、探测结果、转码分片、提取的字幕
+.cache/
+
+# 本机数据：从列表移除的记录
+hidden.json
+
+# 本机配置（可能含访问密码），模板见 config.example.json
+config.json
